@@ -35,8 +35,10 @@ npm install
 
 Make sure MongoDB is running, then start the server and client:
 
-```bash
-npm start
+```bash for client
+npm start 
 ```
-
+```bash for server
+npm run dev
+```
 The client runs on `http://localhost:3000` and the server on `http://localhost:5000`.
