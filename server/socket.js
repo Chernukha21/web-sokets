@@ -1,23 +1,21 @@
-const { Server } = require('socket.io');
-const { Message } = require('./models');
+const { Server } = require("socket.io");
 const {
-  SOCKET_EVENTS: { NEW_MESSAGE, NEW_MESSAGE_SUCCESS, NEW_MESSAGE_ERROR },
-} = require('./constants');
+  createMessage,
+  deleteMessage,
+  updateMessage,
+  joinRoom,
+  leaveRoom,
+} = require("./soketControllers");
 
-const initSocket = httpServer => {
-  const io = new Server(httpServer, { cors: { origin: '*' } });
+const initSocket = (httpServer) => {
+  const io = new Server(httpServer, { cors: { origin: "*" } });
 
-  io.on('connection', socket => {
-    socket.on(NEW_MESSAGE, async payload => {
-      try {
-        const createdMessage = await Message.create(payload);
-        io.emit(NEW_MESSAGE_SUCCESS, createdMessage);
-      } catch (err) {
-        socket.emit(NEW_MESSAGE_ERROR, {
-          error: err.message ?? 'Error',
-        });
-      }
-    });
+  io.on("connection", (socket) => {
+    createMessage(socket, io);
+    deleteMessage(socket, io);
+    updateMessage(socket, io);
+    joinRoom(socket);
+    leaveRoom(socket);
   });
 };
 

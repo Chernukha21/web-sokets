@@ -1,16 +1,34 @@
-const { Message } = require('./../models');
+const { Message } = require("./../models");
+
+const AVAILABLE_ROOMS = ["general", "frontend", "backend"];
 
 module.exports.getMessages = async (req, res, next) => {
-  const { limit = 20 } = req.query;
-
   try {
-    const foundMessages = await Message.find()
-      .limit(Number(limit))
-      .sort({ createdAt: -1 });
+    const { roomId = "general", limit: requestedLimit } = req.query;
 
-    res.status(200).send({ data: foundMessages });
+    if (!AVAILABLE_ROOMS.includes(roomId)) {
+      return res.status(400).send({
+        message: "Unknown room",
+      });
+    }
+
+    const parsedLimit = Number.parseInt(requestedLimit, 10);
+
+    const limit =
+      Number.isInteger(parsedLimit) && parsedLimit > 0
+        ? Math.min(parsedLimit, 100)
+        : 30;
+
+    const messages = await Message.find({
+      roomId,
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit);
+
+    res.status(200).send({
+      data: messages,
+    });
   } catch (err) {
-    console.log('err :>> ', err);
     next(err);
   }
 };

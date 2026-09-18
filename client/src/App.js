@@ -1,56 +1,86 @@
-import { useEffect, useLayoutEffect } from 'react';
-import { Formik, Form, Field } from 'formik';
-import { connect } from 'react-redux';
-import { getMessagesThunk } from './store/slices/messagesSlice';
-import './App.css';
-import { ws } from './api';
+import React, { useEffect, useLayoutEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { getMessagesThunk } from "./store/slices/messagesSlice";
+import "./App.css";
+import MessageList from "./components/MessageList";
+import MessageForm from "./components/MessageForm";
+import { deleteMessage, updateMessage } from "./api/ws";
+import RoomSwitcher from "./components/RoomSwitcher";
 
-function App ({ messages, isFetching, error, limit, get }) {
+function App() {
+  const { messages, isFetching, error, limit, activeRoom } = useSelector(
+    (state) => state.chat
+  );
+  const dispatch = useDispatch();
+
   useEffect(() => {
-    get(limit);
-  }, [limit]);
+    dispatch(
+      getMessagesThunk({
+        limit,
+        roomId: activeRoom,
+      })
+    );
+  }, [dispatch, limit, activeRoom]);
 
   useLayoutEffect(() => {
-    // window.scrollTo(0, document.body.scrollHeight);
     window.scrollTo({
       top: document.body.scrollHeight,
-      behavior: 'smooth',
+      behavior: "smooth",
     });
   }, [messages.length]);
 
-  const addMessage = (values, formikBag) => {
-    ws.createMessage(values);
-    formikBag.resetForm();
+  if (error && error.message === "Network Error") {
+    return <p>{error.message}</p>;
+  }
+  const deleteMessageHandler = (id) => {
+    console.log("deleteMessageHandler", id);
+    deleteMessage(id);
   };
 
+  const updateMessageHandler = (message) => {
+    const body = window.prompt("Edit message", message.body);
+
+    if (!body?.trim() || body.trim() === message.body) {
+      return;
+    }
+
+    updateMessage({
+      messageId: message._id,
+      body: body.trim(),
+    });
+  };
   return (
-    <>
-      {error && <div style={{ color: 'red' }}>ERROR!!!</div>}
-      {isFetching && <div>Messages is loading. Please, wait...</div>}
-      {!isFetching && !error && (
-        <ol>
-          {messages.map(m => (
-            <li key={m._id}>{JSON.stringify(m)}</li>
-          ))}
-        </ol>
-      )}
-      <hr />
-      <Formik initialValues={{ body: '' }} onSubmit={addMessage}>
-        {formikProps => (
-          <Form>
-            <Field name='body'></Field>
-            <button type='submit'>Send</button>
-          </Form>
+    <div className="chat-page">
+      <main className="chat">
+        <header className="chat-header">
+          <div className="online-indicator" />
+
+          <div>
+            <h1>Socket Chat</h1>
+            <p>Real-time messaging</p>
+          </div>
+        </header>
+        <RoomSwitcher />
+        {error && (
+          <div className="status-message status-message--error">
+            {error.message ?? "Something went wrong"}
+          </div>
         )}
-      </Formik>
-    </>
+
+        {isFetching ? (
+          <div className="status-message">Loading messages...</div>
+        ) : (
+          <MessageList
+            messages={messages}
+            onEdit={updateMessageHandler}
+            onDelete={deleteMessageHandler}
+          />
+        )}
+
+        <MessageForm />
+      </main>
+    </div>
   );
 }
 
-const mapStateToProps = ({ chat }) => chat;
-
-const mapDispatchToProps = dispatch => ({
-  get: limit => dispatch(getMessagesThunk(limit)),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(App);
+export default App;
